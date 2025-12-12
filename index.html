@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8" />
+<title>我畫的魚在游泳了（多人版）</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body {
+    margin: 0;
+    background: #e0f2ff;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  .left-panel {
+    width: 40%;
+    padding: 16px;
+    background: #f7fbff;
+    border-right: 2px solid #c5ddf5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .right-panel {
+    flex: 1;
+    position: relative;
+    padding: 0;
+  }
+
+  .tank-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #tankCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 20px;
+  }
+
+  .label {
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #444;
+  }
+
+  input[type="text"], select {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid #b0c4de;
+    font-size: 14px;
+  }
+
+  .color-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .color-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .color-dot.selected {
+    border-color: #000;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .btn-primary {
+    background: #1e88e5;
+    color: white;
+  }
+
+  .btn-secondary {
+    background: #e0e7ff;
+    color: #1e3a8a;
+  }
+
+  .btn-danger {
+    background: #f97373;
+    color: white;
+  }
+
+  .canvas-box {
+    border-radius: 8px;
+    border: 1px solid #bfd7f5;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  canvas {
+    display: block;
+  }
+
+  .tank-title, .tank-info, .timer, .new-friend {
+    position: absolute;
+    z-index: 10;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+
+  .tank-title {
+    top: 8px;
+    left: 12px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .tank-info {
+    top: 32px;
+    left: 12px;
+    font-size: 13px;
+  }
+
+  .timer {
+    top: 8px;
+    right: 12px;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 999px;
+    font-size: 12px;
+  }
+
+  .new-friend {
+    top: 50px;
+    right: 12px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.85);
+    color: #0b5394;
+    border-radius: 999px;
+    font-size: 12px;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .new-friend.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .room-label {
+    font-size: 12px;
+    color: #555;
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- 左邊：畫魚 -->
+  <div class="left-panel">
+    <h1>我畫的魚在游泳了（多人版）</h1>
+
+    <div>
+      <div class="label">你的名字：</div>
+      <input id="playerName" type="text" placeholder="例如：3B-12 Anson" />
+    </div>
+
+    <div>
+      <div class="label">房間代碼（全班要一樣）：</div>
+      <input id="roomId" type="text" value="class-3B" />
+      <div class="room-label">老師可改成不同班別，如 S1-A、3B-AM 等。</div>
+    </div>
+
+    <div>
+      <div class="label">選擇魚型：</div>
+      <select id="fishType">
+        <option value="goldfish">金魚</option>
+        <option value="tropical">熱帶魚</option>
+        <option value="longfish">長身魚</option>
+      </select>
+    </div>
+
+    <div class="label">畫筆顏色：</div>
+    <div id="colorPicker" class="color-picker"></div>
+
+    <div class="label">畫筆粗幼：</div>
+    <button class="btn btn-secondary" data-width="3">幼</button>
+    <button class="btn btn-secondary" data-width="7">中</button>
+    <button class="btn btn-secondary" data-width="12">粗</button>
+
+    <button id="clearBtn" class="btn btn-danger">清除重畫</button>
+    <button id="saveBtn" class="btn btn-secondary">儲存我的魚</button>
+
+    <div class="label">在下面畫你的魚：</div>
+    <div class="canvas-box">
+      <canvas id="drawCanvas" width="420" height="260"></canvas>
+    </div>
+
+    <button id="addToTankBtn" class="btn btn-primary">放進魚缸（多人同步）</button>
+  </div>
+
+  <!-- 右邊：魚缸 -->
+  <div class="right-panel">
+    <div class="tank-wrapper">
+      <canvas id="tankCanvas"></canvas>
+
+      <div class="tank-title">共享大魚缸</div>
+      <div class="tank-info" id="tankInfo">目前有 0 條魚</div>
+      <div class="timer" id="timer">本輪剩餘：5:00</div>
+      <div class="new-friend" id="newFriend">有新朋友加入！</div>
+    </div>
+  </div>
+
+</div>
+<!-- ✅ Firebase + 全部 JS 功能 -->
+<script type="module">
+
+/* -----------------------------
+   ✅ Firebase 初始化
+------------------------------ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD7LZhOTFhPmgS_DJ8zpREgiP-0xgneOVM",
+  authDomain: "fish-game-multi.firebaseapp.com",
+  databaseURL: "https://fish-game-multi-default-rtdb.firebaseio.com",
+  projectId: "fish-game-multi",
+  storageBucket: "fish-game-multi.appspot.com",
+  messagingSenderId: "870369745658",
+  appId: "1:870369745658:web:62e1df3c6c78a0c6fa0743",
+  measurementId: "G-NZVPEWFRF1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* -----------------------------
+   ✅ 畫魚畫布
+------------------------------ */
+const drawCanvas = document.getElementById('drawCanvas');
+const dctx = drawCanvas.getContext('2d');
+
+function drawFishOutline(type = 'goldfish') {
+  dctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+  dctx.lineWidth = 2;
+  dctx.strokeStyle = '#1565c0';
+
+  dctx.save();
+  dctx.translate(210, 130);
+
+  if (type === 'goldfish') {
+    dctx.beginPath();
+    dctx.ellipse(0, 0, 80, 45, 0, 0, Math.PI * 2);
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.moveTo(80, 0);
+    dctx.quadraticCurveTo(120, -40, 140, 0);
+    dctx.quadraticCurveTo(120, 40, 80, 0);
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.fillStyle = '#0d47a1';
+    dctx.arc(-50, -5, 4, 0, Math.PI * 2);
+    dctx.fill();
+  }
+
+  dctx.restore();
+}
+
+drawFishOutline();
+
+/* ✅ 畫筆設定 */
+let currentColor = '#ff5252';
+let brushWidth = 7;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+
+const colors = [
+  '#000000','#ffffff','#ff5252','#ff9800','#ffd600',
+  '#4caf50','#00bcd4','#2196f3','#3f51b5','#9c27b0'
+];
+
+const colorPicker = document.getElementById('colorPicker');
+colors.forEach(c => {
+  const dot = document.createElement('div');
+  dot.className = 'color-dot';
+  dot.style.backgroundColor = c;
+  if (c === currentColor) dot.classList.add('selected');
+  dot.onclick = () => {
+    currentColor = c;
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+    dot.classList.add('selected');
+  };
+  colorPicker.appendChild(dot);
+});
+
+document.querySelectorAll('[data-width]').forEach(btn => {
+  btn.onclick = () => brushWidth = Number(btn.dataset.width);
+});
+
+function getPos(e) {
+  const rect = drawCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX || e.touches?.[0]?.clientX) - rect.left,
+    y: (e.clientY || e.touches?.[0]?.clientY) - rect.top
+  };
+}
+
+drawCanvas.onmousedown = e => {
+  isDrawing = true;
+  const p = getPos(e);
+  lastX = p.x;
+  lastY = p.y;
+};
+
+drawCanvas.onmousemove = e => {
+  if (!isDrawing) return;
+  const p = getPos(e);
+  dctx.strokeStyle = currentColor;
+  dctx.lineWidth = brushWidth;
+  dctx.lineCap = 'round';
+  dctx.beginPath();
+  dctx.moveTo(lastX, lastY);
+  dctx.lineTo(p.x, p.y);
+  dctx.stroke();
+  lastX = p.x;
+  lastY = p.y;
+};
+
+drawCanvas.onmouseup = () => isDrawing = false;
+drawCanvas.onmouseleave = () => isDrawing = false;
+
+document.getElementById('clearBtn').onclick = () => {
+  drawFishOutline(document.getElementById('fishType').value);
+};
+
+/* -----------------------------
+   ✅ 魚缸背景
+------------------------------ */
+const tankCanvas = document.getElementById('tankCanvas');
+const tctx = tankCanvas.getContext('2d');
+
+function resizeTank() {
+  const rect = tankCanvas.getBoundingClientRect();
+  tankCanvas.width = rect.width;
+  tankCanvas.height = rect.height;
+}
+window.onresize = resizeTank;
+resizeTank();
+
+function drawTankBackground() {
+  const w = tankCanvas.width;
+  const h = tankCanvas.height;
+
+  const g = tctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#a7e0ff");
+  g.addColorStop(1, "#0369a1");
+  tctx.fillStyle = g;
+  tctx.fillRect(0, 0, w, h);
+
+  tctx.fillStyle = "#e8d8a0";
+  tctx.fillRect(0, h * 0.85, w, h);
+}
+
+/* -----------------------------
+   ✅ 魚游動動畫
+------------------------------ */
+const fishes = [];
+const tankInfo = document.getElementById('tankInfo');
+const newFriend = document.getElementById('newFriend');
+
+function showNewFriend() {
+  newFriend.classList.add('show');
+  setTimeout(() => newFriend.classList.remove('show'), 1500);
+}
+
+function addFishToLocalList(fishData) {
+  const img = new Image();
+  img.src = fishData.imageData;
+
+  img.onload = () => {
+    fishes.push({
+      img,
+      name: fishData.name,
+      x: Math.random() * tankCanvas.width,
+      y: Math.random() * tankCanvas.height,
+      speed: 1 + Math.random(),
+      dir: Math.random() < 0.5 ? 1 : -1,
+      w: 100,
+      h: 60
+    });
+
+    tankInfo.textContent = `目前有 ${fishes.length} 條魚`;
+    showNewFriend();
+  };
+}
+
+/* -----------------------------
+   ✅ 點魚顯示名字
+------------------------------ */
+tankCanvas.addEventListener("click", function(e) {
+  const rect = tankCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  for (let f of fishes) {
+    if (
+      x > f.x - f.w/2 &&
+      x < f.x + f.w/2 &&
+      y > f.y - f.h/2 &&
+      y < f.y + f.h/2
+    ) {
+      const tag = document.createElement("div");
+      tag.style.position = "absolute";
+      tag.style.left = (f.x - 30) + "px";
+      tag.style.top = (f.y - 50) + "px";
+      tag.style.padding = "4px 8px";
+      tag.style.background = "rgba(255,255,255,0.9)";
+      tag.style.borderRadius = "6px";
+      tag.style.fontSize = "12px";
+      tag.style.color = "#0b5394";
+      tag.style.pointerEvents = "none";
+      tag.style.transition = "opacity 0.5s";
+      tag.textContent = f.name;
+
+      document.querySelector(".tank-wrapper").appendChild(tag);
+
+      setTimeout(() => tag.style.opacity = "0", 1200);
+      setTimeout(() => tag.remove(), 1800);
+      break;
+    }
+  }
+});
+
+/* -----------------------------
+   ✅ 魚缸動畫
+------------------------------ */
+function animate() {
+  requestAnimationFrame(animate);
+
+  drawTankBackground();
+
+  fishes.forEach(f => {
+    f.x += f.speed * f.dir;
+
+    if (f.x > tankCanvas.width - 50) f.dir = -1;
+    if (f.x < 50) f.dir = 1;
+
+    tctx.save();
+    tctx.translate(f.x, f.y);
+
+    if (f.dir === -1) tctx.scale(-1, 1);
+
+    tctx.drawImage(f.img, -50, -30, 100, 60);
+    tctx.restore();
+  });
+}
+
+animate();
+
+/* -----------------------------
+   ✅ 5 分鐘倒數
+------------------------------ */
+let totalSeconds = 5 * 60;
+const timerEl = document.getElementById('timer');
+
+setInterval(() => {
+  totalSeconds--;
+  if (totalSeconds <= 0) {
+    totalSeconds = 5 * 60;
+    fishes.length = 0;
+    tankInfo.textContent = "目前有 0 條魚";
+  }
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  timerEl.textContent = `本輪剩餘：${m}:${s.toString().padStart(2,'0')}`;
+}, 1000);
+
+/* -----------------------------
+   ✅ 多人同步：上傳魚
+------------------------------ */
+document.getElementById('addToTankBtn').onclick = async () => {
+  const name = document.getElementById('playerName').value || "匿名小魚";
+  const roomId = document.getElementById('roomId').value || "default-room";
+  const imageData = drawCanvas.toDataURL("image/png");
+
+  const fish = { name, imageData, createdAt: Date.now() };
+
+  await push(ref(db, `rooms/${roomId}/fish`), fish);
+};
+
+/* -----------------------------
+   ✅ 多人同步：監聽房間
+------------------------------ */
+function startRoomListener() {
+  const roomId = document.getElementById('roomId').value || "default-room";
+  const fishRef = ref(db, `rooms/${roomId}/fish`);
+
+  fishes.length = 0;
+  tankInfo.textContent = "目前有 0 條魚";
+
+  onChildAdded(fishRef, (snapshot) => {
+    addFishToLocalList(snapshot.val());
+  });
+}
+
+document.getElementById('roomId').addEventListener('change', startRoomListener);
+startRoomListener();
+
+</script>
+
+</body>
+</html>
